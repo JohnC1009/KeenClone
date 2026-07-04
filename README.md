@@ -113,7 +113,8 @@ play from anywhere. Add it to your Home Screen for a full-screen app feel.
   and difficulty ratings (later zones spawn faster, meaner aliens)
 - `js/audio.js` — a tiny WebAudio synth: jump blips, zapper pews, goo squishes
 - `js/game.js` — fixed-timestep engine: AABB tile collision, one-way
-  platforms, camera, particles, HUD, and the full state machine
-  (title → story → levels → victory)
+  platforms, camera, particles, HUD, illustrated cutscenes (a five-page
+  animated intro plus a story scene before every zone), and the full
+  state machine (title → intro → zones → victory)
 
 No build step. No dependencies. Just open it and play.

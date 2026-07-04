@@ -100,7 +100,6 @@ if (IS_TOUCH) {
 
 const G = {
   state: 'TITLE',       // TITLE STORY LEVELINTRO PLAY DYING LEVELCLEAR GAMEOVER WIN PAUSE
-  storyPage: 0,
   levelIdx: 0,
   score: 0,
   lives: 3,
@@ -120,23 +119,374 @@ let toasts = [];        // floating texts
 let tiles = {};         // themed tile canvases
 let bg = null;          // background decoration data
 
-const STORY_PAGES = [
-  ['THE YEAR IS 2087.', '',
-   "Eight-year-old genius MADISON 'COMET' CARTER",
-   'was halfway through her math homework when every',
-   'candy store on Earth vanished into space in a',
-   'flash of lime-green light.'],
-  ["The GLOOPIAN EMPIRE has stolen Earth's sugar",
-   'to fuel their MEGA GOO REACTOR -- a machine',
-   'that will turn every planet in the sector',
-   'into lukewarm, lime-flavored goo.', '',
-   'EARTH IS NEXT ON THE MENU.'],
-  ['So Madison built the STAR SKIPPER from a vacuum',
-   "cleaner, her go-kart, and her mom's blender.", '',
-   'Armed with her NEURAL ZAPPER and trusty POGO',
-   'STICK, she crash-lands on PLANET GREXON-7...', '',
-   'Bedtime is at 9:00 PM. Better hurry.'],
+// ------------------------------ CUTSCENES -----------------------------------
+// Each page: an illustrated scene (art painter below) plus caption lines.
+// The intro plays from the title screen; one scene plays before each zone.
+
+const INTRO_PAGES = [
+  { art: 'home', lines: [
+    'OHIO. 8:12 PM. THE YEAR IS 2087.', '',
+    "Madison 'Comet' Carter was halfway through her",
+    'math homework when the sky turned lime-green...',
+    'and every candy store on Earth was beamed',
+    'straight up into space.'] },
+  { art: 'empire', lines: [
+    'THE GLOOPIAN EMPIRE.', '',
+    'One eye each. Zero manners. Their MEGA GOO',
+    'REACTOR runs on pure refined sugar -- at full',
+    'power it will turn every planet in the sector',
+    'into lukewarm lime goo. EARTH IS NEXT.'] },
+  { art: 'build', lines: [
+    'THE GARAGE. 8:26 PM.', '',
+    'Armies were useless. Grown-ups held meetings.',
+    'Madison finished her homework, then built the',
+    'STAR SKIPPER from a vacuum cleaner, a go-kart,',
+    "and her mom's blender. She left a note."] },
+  { art: 'launch', lines: [
+    'T-MINUS ZERO. 8:31 PM.', '',
+    'Neural zapper: packed. Pogo stick: packed.',
+    'Madison punched a kid-sized hole through',
+    'hyperspace, straight toward the source of',
+    'the beam: PLANET GREXON-7.'] },
+  { art: 'crash', lines: [
+    'PLANET GREXON-7. LOCAL TIME: WHO KNOWS.', '',
+    'The landing was... technically a landing.',
+    'The Star Skipper is toast. The reactor is out',
+    'there somewhere past the canyons.',
+    'Bedtime is at 9:00 PM. BETTER HURRY.'] },
 ];
+
+const LEVEL_CUTS = [
+  null,  // zone 1 is introduced by the intro itself
+  { art: 'cave', lines: [
+    'THE CANYON FLOOR.', '',
+    'Past the wreck, a hatch in the rock breathes',
+    'warm air that smells like lime jello.',
+    'Every gloop on this planet crawled out of',
+    'THIS hole. Madison climbs in anyway.'] },
+  { art: 'annex', lines: [
+    'BENEATH THE CAVERNS.', '',
+    'The tunnels end at a steel wall with a door',
+    'built for something much, much bigger than her.',
+    'Pipes as thick as school buses pump goo toward',
+    'the horizon. Getting warmer.'] },
+  { art: 'sewer', lines: [
+    'MAINTENANCE MAP, SECTOR 9.', '',
+    'The annex charts show a shortcut to the core:',
+    'THE SLIME SEWERS. The map has a warning sticker',
+    'on it. The sticker has a warning sticker on it.',
+    'Madison holds her nose and drops in.'] },
+  { art: 'fleet', lines: [
+    'THE GARBAGE LAUNCH TUBE.', '',
+    'WHOOSH. The sewers fire Madison into open sky,',
+    'up among THE JUNK FLEET -- a floating graveyard',
+    'of stolen starships. Somewhere up here is a',
+    'service bridge to the reactor. DO NOT LOOK DOWN.'] },
+  { art: 'throne', lines: [
+    'THE FINAL DOOR. 8:49 PM.', '',
+    "Behind this door: THE GOO THRONE, the reactor's",
+    'beating heart. One off-switch. One kid.',
+    'One pogo stick.',
+    "LET'S FINISH THIS."] },
+];
+
+// A simple cartoon rocket, drawn pointing up with its center at (0,0).
+function drawRocket(g, x, y, s, angle = 0) {
+  g.save();
+  g.translate(x, y);
+  g.rotate(angle);
+  g.fillStyle = '#c9ced9';                                  // body
+  g.fillRect(-10 * s, -22 * s, 20 * s, 36 * s);
+  g.fillStyle = '#e84040';                                  // nose
+  g.beginPath();
+  g.moveTo(-10 * s, -22 * s); g.lineTo(10 * s, -22 * s); g.lineTo(0, -38 * s);
+  g.closePath(); g.fill();
+  g.beginPath();                                            // fins
+  g.moveTo(-10 * s, 14 * s); g.lineTo(-20 * s, 26 * s); g.lineTo(-10 * s, 26 * s);
+  g.moveTo(10 * s, 14 * s); g.lineTo(20 * s, 26 * s); g.lineTo(10 * s, 26 * s);
+  g.closePath(); g.fill();
+  g.fillStyle = '#5a6070';                                  // panel seams
+  g.fillRect(-10 * s, -4 * s, 20 * s, 2 * s);
+  g.fillStyle = '#8ad4ff';                                  // window
+  g.beginPath(); g.arc(0, -12 * s, 5 * s, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#5a6070';
+  g.lineWidth = 2;
+  g.stroke();
+  g.restore();
+}
+
+// Scene painters. Each draws inside the cutscene art frame; t = frames.
+const CUT_ART = {
+  home(g, t, ax, ay, aw, ah) {
+    const grad = g.createLinearGradient(0, ay, 0, ay + ah);
+    grad.addColorStop(0, '#050515'); grad.addColorStop(1, '#141a3a');
+    g.fillStyle = grad; g.fillRect(ax, ay, aw, ah);
+    const rnd = lcg(7);
+    g.fillStyle = '#ffffff';
+    for (let i = 0; i < 40; i++) g.fillRect(ax + rnd() * aw, ay + rnd() * ah * 0.6, 2, 2);
+    g.fillStyle = '#101020';                                 // ground
+    g.fillRect(ax, ay + ah - 36, aw, 36);
+    for (let i = 0; i < 5; i++) {                            // houses
+      const hx = ax + 30 + i * 120, hw = 70, hh = 40 + (i % 3) * 12;
+      g.fillStyle = '#0c0c1c';
+      g.fillRect(hx, ay + ah - 36 - hh, hw, hh);
+      g.beginPath();
+      g.moveTo(hx - 6, ay + ah - 36 - hh); g.lineTo(hx + hw + 6, ay + ah - 36 - hh);
+      g.lineTo(hx + hw / 2, ay + ah - 60 - hh); g.closePath(); g.fill();
+      g.fillStyle = '#ffd94a';
+      g.fillRect(hx + 12, ay + ah - 36 - hh + 14, 8, 10);
+    }
+    const lift = Math.max(0, (t - 50)) * 0.9;                // the candy store, abducted
+    const sx = ax + aw - 190, sy = ay + ah - 84 - lift;
+    g.globalAlpha = 0.28 + 0.1 * Math.sin(t * 0.2);          // tractor beam
+    g.fillStyle = '#7dff5a';
+    g.beginPath();
+    g.moveTo(sx + 8, ay); g.lineTo(sx + 62, ay);
+    g.lineTo(sx + 92, ay + ah - 30); g.lineTo(sx - 22, ay + ah - 30);
+    g.closePath(); g.fill();
+    g.globalAlpha = 1;
+    g.fillStyle = '#d05070';                                 // shop
+    g.fillRect(sx, sy, 70, 48);
+    g.fillStyle = '#ffd94a';
+    g.fillRect(sx + 8, sy + 20, 22, 20);
+    g.fillStyle = '#ffffff';
+    g.font = 'bold 11px "Courier New"';
+    g.fillText('CANDY', sx + 12, sy + 13);
+    g.drawImage(Sprites.madison.idle, ax + 40, ay + ah - 36 - 100, 64, 100);
+  },
+
+  empire(g, t, ax, ay, aw, ah) {
+    g.fillStyle = '#0a0416'; g.fillRect(ax, ay, aw, ah);
+    const cx = ax + aw / 2;
+    g.fillStyle = '#1c1030';                                 // reactor tower
+    g.beginPath();
+    g.moveTo(cx - 60, ay + ah); g.lineTo(cx - 34, ay + 20);
+    g.lineTo(cx + 34, ay + 20); g.lineTo(cx + 60, ay + ah);
+    g.closePath(); g.fill();
+    const pulse = 0.5 + 0.3 * Math.sin(t * 0.08);            // goo core
+    const rg = g.createRadialGradient(cx, ay + 110, 6, cx, ay + 110, 60);
+    rg.addColorStop(0, `rgba(125,255,90,${pulse})`);
+    rg.addColorStop(1, 'rgba(125,255,90,0)');
+    g.fillStyle = rg; g.fillRect(cx - 70, ay + 40, 140, 140);
+    g.fillStyle = '#7dff5a';
+    g.beginPath(); g.arc(cx, ay + 110, 18, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#2a1c44';                                 // feeder pipes
+    g.fillRect(ax, ay + ah - 70, aw, 12);
+    const step = Math.floor(t / 12) % 2;                     // gloop patrol
+    for (let i = 0; i < 4; i++) {
+      const img = (i + step) % 2 === 0 ? Sprites.gloop.f1 : Sprites.gloop.f2;
+      g.drawImage(img, ax + 60 + i * 130 + (t * 0.4 % 26), ay + ah - 54, 48, 40);
+    }
+  },
+
+  build(g, t, ax, ay, aw, ah) {
+    g.fillStyle = '#241e33'; g.fillRect(ax, ay, aw, ah);     // garage wall
+    g.fillStyle = '#171225';
+    g.fillRect(ax, ay + ah - 34, aw, 34);                    // floor
+    g.fillStyle = '#3a3050';                                 // shelf + junk
+    g.fillRect(ax + 30, ay + 40, 170, 10);
+    g.fillStyle = '#5a5070';
+    for (let i = 0; i < 4; i++) g.fillRect(ax + 42 + i * 40, ay + 24, 18, 16);
+    g.fillStyle = '#7a5230';                                 // workbench
+    g.fillRect(ax + 40, ay + ah - 90, 150, 12);
+    g.fillRect(ax + 50, ay + ah - 78, 10, 44);
+    g.fillRect(ax + 170, ay + ah - 78, 10, 44);
+    g.fillStyle = '#ffffff';                                 // the note
+    g.fillRect(ax + 220, ay + 60, 34, 42);
+    g.fillStyle = '#8888aa';
+    for (let i = 0; i < 4; i++) g.fillRect(ax + 224, ay + 68 + i * 8, 26, 2);
+    drawRocket(g, ax + aw - 130, ay + ah - 112, 2, -0.08);
+    if (t % 16 < 8) {                                        // welding sparks
+      const rnd = lcg(t);
+      g.fillStyle = '#ffd94a';
+      for (let i = 0; i < 6; i++) {
+        g.fillRect(ax + aw - 150 + rnd() * 30, ay + ah - 80 + rnd() * 30, 3, 3);
+      }
+    }
+    g.drawImage(Sprites.madison.idle, ax + aw - 240, ay + ah - 34 - 100, 64, 100);
+  },
+
+  launch(g, t, ax, ay, aw, ah) {
+    g.fillStyle = '#04040f'; g.fillRect(ax, ay, aw, ah);
+    g.fillStyle = '#9ab0ff';                                 // hyperspace streaks
+    for (let i = 0; i < 24; i++) {
+      const y = ay + (i * 37) % ah;
+      const x = ax + aw - ((t * 9 + i * 83) % (aw + 80)) - 40;
+      g.globalAlpha = 0.25 + (i % 3) * 0.25;
+      g.fillRect(x, y, 34 + (i % 4) * 14, 2);
+    }
+    g.globalAlpha = 1;
+    g.fillStyle = '#5a3a7a';                                 // Grexon-7 ahead
+    g.beginPath(); g.arc(ax + aw - 70, ay + 60, 34, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#9a7aba'; g.lineWidth = 4;
+    g.beginPath(); g.ellipse(ax + aw - 70, ay + 62, 50, 12, -0.3, 0, Math.PI * 2); g.stroke();
+    const wob = Math.sin(t * 0.15) * 4;
+    drawRocket(g, ax + aw / 2 - 40, ay + ah / 2 + wob, 2.4, Math.PI / 2 - 0.12);
+    const fl = 20 + (t % 6) * 4;                             // flame
+    g.fillStyle = '#ff9a3a';
+    g.beginPath();
+    g.moveTo(ax + aw / 2 - 96, ay + ah / 2 + wob - 14);
+    g.lineTo(ax + aw / 2 - 96 - fl, ay + ah / 2 + wob);
+    g.lineTo(ax + aw / 2 - 96, ay + ah / 2 + wob + 14);
+    g.closePath(); g.fill();
+    g.fillStyle = '#ffd94a';
+    g.beginPath();
+    g.moveTo(ax + aw / 2 - 96, ay + ah / 2 + wob - 7);
+    g.lineTo(ax + aw / 2 - 96 - fl * 0.55, ay + ah / 2 + wob);
+    g.lineTo(ax + aw / 2 - 96, ay + ah / 2 + wob + 7);
+    g.closePath(); g.fill();
+  },
+
+  crash(g, t, ax, ay, aw, ah) {
+    const grad = g.createLinearGradient(0, ay, 0, ay + ah);
+    grad.addColorStop(0, '#1a0f38'); grad.addColorStop(1, '#7a3a6a');
+    g.fillStyle = grad; g.fillRect(ax, ay, aw, ah);
+    g.fillStyle = '#e8d8b0';
+    g.beginPath(); g.arc(ax + aw - 90, ay + 46, 22, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#b0c8e0';
+    g.beginPath(); g.arc(ax + 90, ay + 66, 12, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#3a2050';                                 // mesas
+    g.fillRect(ax + 40, ay + ah - 120, 90, 90);
+    g.fillRect(ax + aw - 170, ay + ah - 140, 110, 110);
+    g.fillStyle = '#c98a4b';                                 // canyon floor
+    g.fillRect(ax, ay + ah - 40, aw, 40);
+    drawRocket(g, ax + aw / 2 + 60, ay + ah - 58, 2, Math.PI + 0.35);
+    for (let i = 0; i < 3; i++) {                            // smoke
+      const ph = (t * 0.7 + i * 40) % 120;
+      g.globalAlpha = Math.max(0, 0.5 - ph / 240);
+      g.fillStyle = '#b0b0c0';
+      g.beginPath();
+      g.arc(ax + aw / 2 + 40 + i * 14, ay + ah - 90 - ph * 0.5, 8 + ph * 0.1, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.globalAlpha = 1;
+    g.drawImage(Sprites.madison.pogo, ax + aw / 2 - 100, ay + ah - 40 - 130, 80, 130);
+  },
+
+  cave(g, t, ax, ay, aw, ah) {
+    g.fillStyle = '#4a3a5c'; g.fillRect(ax, ay, aw, ah);     // rock face
+    const rnd = lcg(21);
+    g.fillStyle = '#3a2c48';
+    for (let i = 0; i < 60; i++) g.fillRect(ax + rnd() * aw, ay + rnd() * ah, 5, 4);
+    const cx = ax + aw / 2 - 40, cy = ay + ah - 20;
+    const pulse = 0.25 + 0.12 * Math.sin(t * 0.07);          // goo glow
+    const rg = g.createRadialGradient(cx, cy, 10, cx, cy, 150);
+    rg.addColorStop(0, `rgba(80,255,80,${pulse})`);
+    rg.addColorStop(1, 'rgba(80,255,80,0)');
+    g.fillStyle = rg; g.fillRect(ax, ay, aw, ah);
+    g.fillStyle = '#0a0812';                                 // cave mouth
+    g.beginPath(); g.ellipse(cx, cy, 110, 96, 0, Math.PI, 0); g.closePath(); g.fill();
+    g.fillStyle = '#c98a4b';
+    g.fillRect(ax, ay + ah - 20, aw, 20);
+    g.drawImage(Sprites.madisonL.idle, ax + aw - 150, ay + ah - 20 - 100, 64, 100);
+  },
+
+  annex(g, t, ax, ay, aw, ah) {
+    g.fillStyle = '#1a1a26'; g.fillRect(ax, ay, aw, ah);
+    g.fillStyle = '#2a2a3a';                                 // pipes overhead
+    g.fillRect(ax, ay + 14, aw, 22);
+    g.fillRect(ax, ay + 46, aw, 14);
+    g.fillStyle = '#3a3a4e';
+    for (let i = 0; i < 8; i++) g.fillRect(ax + i * 84, ay + 14, 8, 46);
+    const dx = ax + aw / 2 - 90, dy = ay + 80;               // the big door
+    g.fillStyle = '#4a505e'; g.fillRect(dx, dy, 180, ah - 100);
+    g.fillStyle = '#343a46'; g.fillRect(dx + 86, dy, 8, ah - 100);
+    g.fillStyle = '#5a6070';
+    for (let i = 0; i < 5; i++) {
+      g.fillRect(dx + 10, dy + 12 + i * 26, 6, 6);
+      g.fillRect(dx + 164, dy + 12 + i * 26, 6, 6);
+    }
+    g.fillStyle = t % 40 < 20 ? '#ff4040' : '#601010';       // warning light
+    g.beginPath(); g.arc(dx + 90, dy - 12, 8, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#101018';
+    g.fillRect(ax, ay + ah - 24, aw, 24);
+    g.drawImage(Sprites.madison.idle, ax + 80, ay + ah - 24 - 90, 58, 90);
+  },
+
+  sewer(g, t, ax, ay, aw, ah) {
+    g.fillStyle = '#140a1e'; g.fillRect(ax, ay, aw, ah);
+    const cx = ax + aw / 2, cy = ay + ah / 2 - 10;
+    g.fillStyle = '#3a2c52';                                 // pipe rim
+    g.beginPath(); g.arc(cx, cy, 92, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#0a0612';                                 // pipe throat
+    g.beginPath(); g.arc(cx, cy, 74, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#524070'; g.lineWidth = 4;              // grate bars
+    for (let i = -2; i <= 2; i++) {
+      g.beginPath(); g.moveTo(cx + i * 26, cy - 70); g.lineTo(cx + i * 26, cy + 70); g.stroke();
+    }
+    g.fillStyle = '#b44ae0';                                 // drips
+    for (let i = 0; i < 4; i++) {
+      const dy2 = (t * 2.2 + i * 47) % 110;
+      g.fillRect(cx - 60 + i * 40, cy - 80 + dy2, 4, 10);
+    }
+    g.beginPath();                                           // goo pool
+    g.ellipse(cx, ay + ah - 16, 130, 12, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#ffd94a';                                 // warning sign
+    g.beginPath();
+    g.moveTo(ax + 70, ay + 120); g.lineTo(ax + 130, ay + 120); g.lineTo(ax + 100, ay + 66);
+    g.closePath(); g.fill();
+    g.fillStyle = '#141420';
+    g.font = 'bold 30px "Courier New"';
+    g.fillText('!', ax + 94, ay + 112);
+  },
+
+  fleet(g, t, ax, ay, aw, ah) {
+    const grad = g.createLinearGradient(0, ay, 0, ay + ah);
+    grad.addColorStop(0, '#0c1a30'); grad.addColorStop(1, '#3a5a80');
+    g.fillStyle = grad; g.fillRect(ax, ay, aw, ah);
+    const rnd = lcg(31);
+    g.fillStyle = '#ffffff';
+    for (let i = 0; i < 26; i++) g.fillRect(ax + rnd() * aw, ay + rnd() * ah * 0.5, 2, 2);
+    for (let i = 0; i < 3; i++) {                            // derelict hulls
+      const bx = ax + 60 + i * 190, by = ay + 46 + (i % 2) * 52 + Math.sin(t * 0.03 + i * 2) * 5;
+      g.fillStyle = '#5a6478';
+      g.fillRect(bx, by, 130, 34);
+      g.beginPath(); g.moveTo(bx, by); g.lineTo(bx - 26, by + 17); g.lineTo(bx, by + 34);
+      g.closePath(); g.fill();
+      g.fillStyle = '#3a4254';
+      g.fillRect(bx + 20, by - 12, 14, 12);
+      g.fillStyle = (t + i * 20) % 50 < 25 ? '#ffd94a' : '#5a6478';
+      g.fillRect(bx + 110, by + 12, 8, 8);
+      g.fillStyle = '#8ad4ff';
+      for (let w = 0; w < 4; w++) g.fillRect(bx + 42 + w * 20, by + 12, 8, 8);
+    }
+    g.fillStyle = '#ffd94a';                                 // launch arc
+    for (let i = 0; i < 12; i++) {
+      const p = i / 11;
+      const lx = ax + 40 + p * 220;
+      const ly = ay + ah - 20 - Math.sin(p * Math.PI * 0.5) * 150;
+      if ((i + Math.floor(t / 8)) % 3 === 0) g.fillRect(lx, ly, 5, 5);
+    }
+    g.drawImage(Sprites.madison.jump, ax + 250, ay + 60, 52, 82);
+  },
+
+  throne(g, t, ax, ay, aw, ah) {
+    g.fillStyle = '#04120a'; g.fillRect(ax, ay, aw, ah);
+    const cx = ax + aw / 2;
+    const pulse = 0.3 + 0.15 * Math.sin(t * 0.06);
+    const rg = g.createRadialGradient(cx, ay + ah / 2, 20, cx, ay + ah / 2, 260);
+    rg.addColorStop(0, `rgba(60,255,120,${pulse})`);
+    rg.addColorStop(1, 'rgba(60,255,120,0)');
+    g.fillStyle = rg; g.fillRect(ax, ay, aw, ah);
+    g.fillStyle = '#0e3a20';                                 // the door
+    g.beginPath();
+    g.moveTo(cx - 90, ay + ah); g.lineTo(cx - 90, ay + 90);
+    g.arc(cx, ay + 90, 90, Math.PI, 0);
+    g.lineTo(cx + 90, ay + ah);
+    g.closePath(); g.fill();
+    g.fillStyle = '#1e6038';
+    g.fillRect(cx - 5, ay + 90, 10, ah - 90);
+    g.fillStyle = '#50ff50';                                 // goo crown
+    for (let i = -2; i <= 2; i++) {
+      const gy = ay + 52 - Math.abs(i) * 10 + Math.sin(t * 0.1 + i) * 3;
+      g.beginPath(); g.arc(cx + i * 34, gy, 12 - Math.abs(i) * 2, 0, Math.PI * 2); g.fill();
+    }
+    const step = Math.floor(t / 14) % 2;                     // gloop guards
+    g.drawImage(step ? Sprites.gloop.f1 : Sprites.gloop.f2, cx - 190, ay + ah - 52, 56, 46);
+    g.drawImage(step ? Sprites.gloop.f2 : Sprites.gloop.f1, cx + 134, ay + ah - 52, 56, 46);
+    g.drawImage(Sprites.madison.idle, cx - 30, ay + ah - 92, 58, 92);
+  },
+};
 
 // ---------------------------- LEVEL PARSING ---------------------------------
 
@@ -722,6 +1072,10 @@ function drawTiles() {
       const y = r * T;
       if (tiles[ch]) {
         ctx.drawImage(tiles[ch], x, y);
+        // surface cap where solid ground meets open air
+        if ((ch === 'X' || ch === 'B') && !isSolid(tileAt(c, r - 1)) && r > 0) {
+          ctx.drawImage(ch === 'X' ? tiles._capX : tiles._capB, x, y);
+        }
       } else if (ch === '*') {
         drawItem(Sprites.items.candy, x, y, 3);
       } else if (ch === '%') {
@@ -755,14 +1109,32 @@ function drawTiles() {
     const w = (er.c1 - er.c0 + 1) * T;
     const h = (er.r1 - er.r0 + 1) * T;
     if (x > -w - 60 && x < VIEW_W + 60) {
-      ctx.strokeStyle = '#8090ff';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+      // door frame with chasing marquee bulbs
+      ctx.strokeStyle = '#31406e';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(x + 2, y + 2, w - 4, h - 4);
+      const phase = Math.floor(G.time / 10);
+      let bulb = 0;
+      const dot = (bx, by) => {
+        ctx.fillStyle = (bulb + phase) % 3 === 0 ? '#ffe080' : '#404a80';
+        ctx.fillRect(bx - 2, by - 2, 5, 5);
+        bulb++;
+      };
+      for (let bx = x + 6; bx <= x + w - 6; bx += 10) dot(bx, y + 4);
+      for (let by = y + 14; by <= y + h - 6; by += 10) dot(x + w - 4, by);
+      for (let bx = x + w - 6; bx >= x + 6; bx -= 10) dot(bx, y + h - 4);
+      for (let by = y + h - 6; by >= y + 14; by -= 10) dot(x + 4, by);
+      // lit sign
       const on = Math.floor(G.time / 20) % 2 === 0;
+      ctx.fillStyle = '#101830';
+      ctx.fillRect(x + w / 2 - 30, y - 24, 60, 20);
+      ctx.strokeStyle = '#31406e';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + w / 2 - 30, y - 24, 60, 20);
       ctx.fillStyle = on ? '#aaffcc' : '#3a6a5a';
-      ctx.font = 'bold 16px "Courier New"';
+      ctx.font = 'bold 15px "Courier New"';
       ctx.textAlign = 'center';
-      ctx.fillText('EXIT', x + w / 2, y - 8);
+      ctx.fillText('EXIT', x + w / 2, y - 9);
       ctx.textAlign = 'left';
     }
   }
@@ -965,18 +1337,42 @@ function drawTitle() {
   bigText("(c) 2087 CARTER AEROSPACE (MADISON'S GARAGE)", 522, 12, '#6a5aa8');
 }
 
-function drawStory() {
+function drawCutscene() {
   dimScreen(1);
-  const page = STORY_PAGES[G.storyPage];
-  bigText(`- ${G.storyPage + 1} -`, 90, 18, '#6a5aa8');
-  ctx.font = 'bold 20px "Courier New"';
+  const page = G.cut.pages[G.cut.idx];
+
+  // Art frame
+  const ax = 160, ay = 40, aw = 640, ah = 240;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(ax, ay, aw, ah);
+  ctx.clip();
+  CUT_ART[page.art](ctx, G.stateTime, ax, ay, aw, ah);
+  ctx.restore();
+  ctx.strokeStyle = '#4a3d80';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(ax - 2, ay - 2, aw + 4, ah + 4);
+  ctx.strokeStyle = '#241d4a';
+  ctx.strokeRect(ax - 6, ay - 6, aw + 12, ah + 12);
+
+  // Caption
+  ctx.font = 'bold 19px "Courier New"';
   ctx.textAlign = 'center';
-  page.forEach((line, i) => {
+  page.lines.forEach((line, i) => {
     ctx.fillStyle = line === line.toUpperCase() && line.length > 0 ? '#ffd94a' : '#e0e0f0';
-    ctx.fillText(line, VIEW_W / 2, 170 + i * 34);
+    ctx.fillText(line, VIEW_W / 2, 322 + i * 28);
   });
   ctx.textAlign = 'left';
-  blinkText(G.storyPage < STORY_PAGES.length - 1 ? (IS_TOUCH ? 'TAP: NEXT' : 'ENTER: NEXT') : (IS_TOUCH ? 'TAP: BLAST OFF!' : 'ENTER: BLAST OFF!'), 480, 18, '#aaffcc');
+
+  // Page dots for multi-page scenes
+  if (G.cut.pages.length > 1) {
+    for (let i = 0; i < G.cut.pages.length; i++) {
+      ctx.fillStyle = i === G.cut.idx ? '#ffd94a' : '#4a3d80';
+      ctx.fillRect(VIEW_W / 2 - G.cut.pages.length * 9 + i * 18, 498, 10, 10);
+    }
+  }
+  const last = G.cut.idx >= G.cut.pages.length - 1;
+  blinkText(last ? (IS_TOUCH ? 'TAP: GO!' : 'ENTER: GO!') : (IS_TOUCH ? 'TAP: NEXT' : 'ENTER: NEXT'), 528, 15, '#aaffcc');
 }
 
 function drawLevelIntro() {
@@ -995,16 +1391,22 @@ function update() {
 
   switch (G.state) {
     case 'TITLE':
-      if (pressed.start) { Sfx.select(); G.state = 'STORY'; G.storyPage = 0; G.stateTime = 0; }
-      break;
-
-    case 'STORY':
       if (pressed.start) {
         Sfx.select();
-        G.storyPage++;
-        if (G.storyPage >= STORY_PAGES.length) {
-          G.levelIdx = 0; G.score = 0; G.lives = 3; G.ammo = 6; G.nextLifeAt = 15000;
-          loadLevel(0);
+        G.score = 0; G.lives = 3; G.ammo = 6; G.nextLifeAt = 15000;
+        G.cut = { pages: INTRO_PAGES, idx: 0, nextLevel: 0 };
+        G.state = 'CUTSCENE';
+        G.stateTime = 0;
+      }
+      break;
+
+    case 'CUTSCENE':
+      if (pressed.start) {
+        Sfx.select();
+        G.cut.idx++;
+        if (G.cut.idx >= G.cut.pages.length) {
+          G.levelIdx = G.cut.nextLevel;
+          loadLevel(G.levelIdx);
           G.state = 'LEVELINTRO';
         }
         G.stateTime = 0;
@@ -1051,13 +1453,13 @@ function update() {
       updateFx();
       if (G.stateTime > 40 && pressed.start) {
         Sfx.select();
-        G.levelIdx++;
-        if (G.levelIdx >= LEVELS.length) {
+        const next = G.levelIdx + 1;
+        if (next >= LEVELS.length) {
           Sfx.win();
           G.state = 'WIN';
         } else {
-          loadLevel(G.levelIdx);
-          G.state = 'LEVELINTRO';
+          G.cut = { pages: [LEVEL_CUTS[next]], idx: 0, nextLevel: next };
+          G.state = 'CUTSCENE';
         }
         G.stateTime = 0;
       }
@@ -1082,8 +1484,8 @@ function render() {
       drawTitle();
       break;
 
-    case 'STORY':
-      drawStory();
+    case 'CUTSCENE':
+      drawCutscene();
       break;
 
     case 'LEVELINTRO':

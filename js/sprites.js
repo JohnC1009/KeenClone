@@ -30,6 +30,29 @@ function makeSprite(rows, pal, scale = SCALE) {
   return c;
 }
 
+// Draw a dark 1-art-pixel outline around a sprite (Keen-style EGA look).
+// The outline is drawn inside the existing canvas bounds.
+function outlined(src, color = '#141420') {
+  const sil = document.createElement('canvas');
+  sil.width = src.width;
+  sil.height = src.height;
+  const sg = sil.getContext('2d');
+  sg.drawImage(src, 0, 0);
+  sg.globalCompositeOperation = 'source-in';
+  sg.fillStyle = color;
+  sg.fillRect(0, 0, sil.width, sil.height);
+
+  const out = document.createElement('canvas');
+  out.width = src.width;
+  out.height = src.height;
+  const g = out.getContext('2d');
+  for (const [dx, dy] of [[SCALE, 0], [-SCALE, 0], [0, SCALE], [0, -SCALE]]) {
+    g.drawImage(sil, dx, dy);
+  }
+  g.drawImage(src, 0, 0);
+  return out;
+}
+
 function flipH(src) {
   const c = document.createElement('canvas');
   c.width = src.width;
@@ -377,35 +400,60 @@ function makeTile(painter, seed) {
 function buildTiles(theme) {
   const t = {};
 
-  // X : solid rock
+  // X : solid rock — clumpy texture with cracks, EGA-style
   t['X'] = makeTile((g, px, rnd) => {
     g.fillStyle = theme.rock;
     g.fillRect(0, 0, TILE, TILE);
-    for (let i = 0; i < 26; i++) {
-      px(Math.floor(rnd() * 16), Math.floor(rnd() * 16),
-         rnd() < 0.5 ? theme.rockDark : theme.rockLight);
+    // dark clumps
+    for (let i = 0; i < 5; i++) {
+      const bx = 1 + Math.floor(rnd() * 12);
+      const by = 2 + Math.floor(rnd() * 11);
+      px(bx, by, theme.rockDark); px(bx + 1, by, theme.rockDark);
+      px(bx, by + 1, theme.rockDark);
+      px(bx + 1, by - 1, theme.rockLight);
     }
+    // hairline cracks
+    for (let i = 0; i < 2; i++) {
+      let cx = 2 + Math.floor(rnd() * 11);
+      let cy = 2 + Math.floor(rnd() * 6);
+      for (let s = 0; s < 5; s++) {
+        px(cx, cy, theme.rockDark);
+        cy++;
+        if (rnd() < 0.5) cx += rnd() < 0.5 ? 1 : -1;
+      }
+    }
+    // bevel
     g.fillStyle = theme.rockLight;
     g.fillRect(0, 0, TILE, SCALE);
+    g.fillRect(0, 0, SCALE, TILE);
     g.fillStyle = theme.rockDark;
     g.fillRect(0, TILE - SCALE, TILE, SCALE);
     g.fillRect(TILE - SCALE, 0, SCALE, TILE);
   }, theme.seed);
 
-  // B : brick / tech panel
+  // B : brick courses with mortar (Keen city-wall look)
   t['B'] = makeTile((g, px, rnd) => {
-    g.fillStyle = theme.brick;
+    g.fillStyle = theme.brickDark;               // mortar
     g.fillRect(0, 0, TILE, TILE);
-    g.fillStyle = theme.brickDark;
-    g.fillRect(0, 7 * SCALE, TILE, SCALE);
-    g.fillRect(0, 15 * SCALE, TILE, SCALE);
-    g.fillRect(7 * SCALE, 0, SCALE, 8 * SCALE);
-    g.fillRect(3 * SCALE, 8 * SCALE, SCALE, 8 * SCALE);
-    g.fillRect(11 * SCALE, 8 * SCALE, SCALE, 8 * SCALE);
-    g.fillStyle = theme.brickLight;
-    g.fillRect(0, 0, TILE, SCALE);
-    px(1, 1, theme.brickLight); px(14, 1, theme.brickLight);
-    px(1, 9, theme.brickLight); px(9, 9, theme.brickLight);
+    for (let course = 0; course < 4; course++) {
+      const y = course * 4;
+      const off = course % 2 === 0 ? 0 : 4;
+      for (let bx = -8; bx < 16; bx += 8) {
+        const x = bx + off;
+        // brick body 7x3 art px
+        g.fillStyle = theme.brick;
+        g.fillRect(Math.max(0, x) * SCALE, (y + 1) * SCALE,
+                   (Math.min(16, x + 7) - Math.max(0, x)) * SCALE, 3 * SCALE);
+        // top highlight
+        g.fillStyle = theme.brickLight;
+        g.fillRect(Math.max(0, x) * SCALE, (y + 1) * SCALE,
+                   (Math.min(16, x + 7) - Math.max(0, x)) * SCALE, SCALE);
+      }
+    }
+    // weathering
+    for (let i = 0; i < 4; i++) {
+      px(Math.floor(rnd() * 16), Math.floor(rnd() * 16), theme.brickDark);
+    }
   }, theme.seed + 1);
 
   // - : one-way platform
@@ -458,6 +506,18 @@ function buildTiles(theme) {
   t['R'] = makeTile(doorPainter('#c03040', '#701020', '#ff8090'), theme.seed + 4);
   t['G'] = makeTile(doorPainter('#30a848', '#106028', '#80ffa0'), theme.seed + 5);
 
+  // Edge caps: drawn over X/B tiles whose top faces open air, giving the
+  // ground a defined Keen-like surface line.
+  const cap = (light, dark) => makeTile((g) => {
+    g.clearRect(0, 0, TILE, TILE);
+    g.fillStyle = light;
+    g.fillRect(0, 0, TILE, 2 * SCALE);
+    g.fillStyle = dark;
+    g.fillRect(0, 2 * SCALE, TILE, SCALE);
+  }, 1);
+  t._capX = cap(theme.rockLight, theme.rockDark);
+  t._capB = cap(theme.brickLight, theme.brickDark);
+
   return t;
 }
 
@@ -485,6 +545,17 @@ const Sprites = {
   shot: SHOT,
   buildTiles,
 };
+
+// Outline every character and item sprite (must happen before mirroring so
+// the flipped frames inherit the outline).
+for (const k of Object.keys(Sprites.madison)) Sprites.madison[k] = outlined(Sprites.madison[k]);
+for (const name of ['gloop', 'boinger', 'krawler']) {
+  Sprites[name].f1 = outlined(Sprites[name].f1);
+  Sprites[name].f2 = outlined(Sprites[name].f2);
+  Sprites[name].stun = outlined(Sprites[name].stun);
+}
+for (const k of Object.keys(Sprites.items)) Sprites.items[k] = outlined(Sprites.items[k]);
+Sprites.shot = outlined(Sprites.shot);
 
 // Pre-build mirrored (left-facing) frames.
 Sprites.madisonL = {};

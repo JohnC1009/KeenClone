@@ -66,7 +66,16 @@ python3 -m http.server 8000
 # then visit http://localhost:8000
 ```
 
-### Controls
+### Playing on iPad / touch devices
+
+The game detects touch screens and shows on-screen controls automatically:
+a left/right pad, **JUMP**, **ZAP**, and **POGO** buttons, and a pause
+button. Tap the screen to advance menus. Serve the folder from any machine
+on your network (`python3 -m http.server 8000`) and open
+`http://<your-computer>:8000` in Safari — or host it on GitHub Pages and
+play from anywhere. Add it to your Home Screen for a full-screen app feel.
+
+### Controls (keyboard)
 
 | Key | Action |
 | --- | --- |

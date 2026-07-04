@@ -33,3 +33,66 @@ html, body {
   letter-spacing: 1px;
   user-select: none;
 }
+
+/* ------- touch controls (shown only on touch devices via body.touch) ------- */
+
+#touch {
+  display: none;
+}
+
+body.touch #foot {
+  display: none;
+}
+
+body.touch #touch {
+  display: flex;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  padding: 0 max(14px, env(safe-area-inset-left)) 0 max(14px, env(safe-area-inset-right));
+  justify-content: space-between;
+  align-items: flex-end;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.t-group {
+  display: flex;
+  gap: 14px;
+  align-items: flex-end;
+}
+
+.t-btn {
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  border: 2px solid rgba(160, 140, 255, 0.5);
+  border-radius: 50%;
+  background: rgba(40, 28, 80, 0.55);
+  color: #d8d0ff;
+  font-family: "Courier New", monospace;
+  font-weight: bold;
+}
+
+.t-big {
+  width: 84px;
+  height: 84px;
+  font-size: 22px;
+}
+
+.t-small {
+  width: 62px;
+  height: 62px;
+  font-size: 13px;
+}
+
+.t-btn:active {
+  background: rgba(120, 90, 220, 0.7);
+}
+
+body.touch canvas {
+  touch-action: none;
+}

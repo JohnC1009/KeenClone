@@ -29,6 +29,9 @@ const ITEMS = { '*': 1, '%': 1, A: 1, H: 1, r: 1, g: 1 };
 
 // ------------------------------- INPUT --------------------------------------
 
+const IS_TOUCH = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+const PRESS_START = IS_TOUCH ? 'TAP SCREEN' : 'PRESS ENTER';
+
 const keys = {};
 const pressed = {};   // edge-triggered, cleared each frame
 
@@ -56,6 +59,42 @@ window.addEventListener('keyup', (e) => {
   e.preventDefault();
   keys[k] = false;
 });
+
+// On-screen buttons for touch devices (iPad etc.). iPadOS Safari supports
+// pointer events, so we bind those only — binding touch events too would
+// double-fire and toggle the pogo twice per tap.
+if (IS_TOUCH) {
+  document.body.classList.add('touch');
+
+  const bind = (id, key) => {
+    const el = document.getElementById(id);
+    const down = (e) => {
+      e.preventDefault();
+      Sfx.unlock();
+      if (!keys[key]) pressed[key] = true;
+      keys[key] = true;
+    };
+    const up = (e) => { e.preventDefault(); keys[key] = false; };
+    el.addEventListener('pointerdown', down);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+    el.addEventListener('pointerleave', up);
+    el.addEventListener('contextmenu', (e) => e.preventDefault());
+  };
+  bind('t-left', 'left');
+  bind('t-right', 'right');
+  bind('t-jump', 'jump');
+  bind('t-zap', 'shoot');
+  bind('t-pogo', 'pogo');
+  bind('t-pause', 'start');
+
+  // Tapping the playfield advances menus (but never pauses mid-game).
+  canvas.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    Sfx.unlock();
+    if (G.state !== 'PLAY') pressed.start = true;
+  });
+}
 
 // ------------------------------ GAME STATE ----------------------------------
 
@@ -905,7 +944,12 @@ function drawTitle() {
   ctx.font = 'bold 16px "Courier New"';
   ctx.fillStyle = '#c9ced9';
   ctx.textAlign = 'center';
-  const lines = [
+  const lines = IS_TOUCH ? [
+    'LEFT / RIGHT ..... RUN',
+    'JUMP ............. JUMP (HOLD = HIGHER)',
+    'ZAP .............. NEURAL ZAPPER',
+    'POGO ............. POGO STICK',
+  ] : [
     'ARROWS / WASD .... RUN',
     'Z or SPACE ....... JUMP',
     'X ................ NEURAL ZAPPER',
@@ -914,7 +958,7 @@ function drawTitle() {
   lines.forEach((l, i) => ctx.fillText(l, VIEW_W / 2 + 120, 300 + i * 26));
   ctx.textAlign = 'left';
 
-  blinkText('PRESS ENTER TO START', 470, 22, '#aaffcc');
+  blinkText(IS_TOUCH ? 'TAP TO START' : 'PRESS ENTER TO START', 470, 22, '#aaffcc');
   bigText("(c) 2087 CARTER AEROSPACE (ZOE'S GARAGE)", 522, 12, '#6a5aa8');
 }
 
@@ -929,7 +973,7 @@ function drawStory() {
     ctx.fillText(line, VIEW_W / 2, 170 + i * 34);
   });
   ctx.textAlign = 'left';
-  blinkText(G.storyPage < STORY_PAGES.length - 1 ? 'ENTER: NEXT' : 'ENTER: BLAST OFF!', 480, 18, '#aaffcc');
+  blinkText(G.storyPage < STORY_PAGES.length - 1 ? (IS_TOUCH ? 'TAP: NEXT' : 'ENTER: NEXT') : (IS_TOUCH ? 'TAP: BLAST OFF!' : 'ENTER: BLAST OFF!'), 480, 18, '#aaffcc');
 }
 
 function drawLevelIntro() {
@@ -937,7 +981,7 @@ function drawLevelIntro() {
   bigText(`ZONE ${G.levelIdx + 1}`, 200, 24, '#a0a0ff');
   bigText(LEVELS[G.levelIdx].name, 260, 44);
   bigText(LEVELS[G.levelIdx].subtitle, 310, 17, '#c9ced9');
-  blinkText('PRESS ENTER', 420, 20, '#aaffcc');
+  blinkText(PRESS_START, 420, 20, '#aaffcc');
 }
 
 // ------------------------------ STATE MACHINE -------------------------------
@@ -1057,12 +1101,12 @@ function render() {
       if (G.state === 'PAUSE') {
         dimScreen(0.55);
         bigText('PAUSED', 260, 44);
-        blinkText('ENTER TO RESUME', 320, 18, '#aaffcc');
+        blinkText(IS_TOUCH ? 'TAP PAUSE TO RESUME' : 'ENTER TO RESUME', 320, 18, '#aaffcc');
       } else if (G.state === 'LEVELCLEAR') {
         dimScreen(0.55);
         bigText('ZONE CLEAR!', 240, 44);
         bigText('+1000', 285, 24, '#aaffcc');
-        if (G.stateTime > 40) blinkText('PRESS ENTER', 360, 20, '#aaffcc');
+        if (G.stateTime > 40) blinkText(PRESS_START, 360, 20, '#aaffcc');
       }
       break;
     }
@@ -1072,7 +1116,7 @@ function render() {
       bigText('GAME OVER', 220, 52, '#ff5060');
       bigText('The Gloopian Empire keeps the candy...', 280, 18, '#c9ced9');
       bigText(`FINAL SCORE ${G.score}`, 330, 24);
-      if (G.stateTime > 60) blinkText('PRESS ENTER', 420, 20, '#aaffcc');
+      if (G.stateTime > 60) blinkText(PRESS_START, 420, 20, '#aaffcc');
       break;
 
     case 'WIN':
@@ -1094,7 +1138,7 @@ function render() {
       lines.forEach((l, i) => ctx.fillText(l, VIEW_W / 2, 190 + i * 30));
       ctx.textAlign = 'left';
       bigText(`FINAL SCORE ${G.score}`, 460, 26);
-      if (G.stateTime > 60) blinkText('PRESS ENTER', 510, 18, '#aaffcc');
+      if (G.stateTime > 60) blinkText(PRESS_START, 510, 18, '#aaffcc');
       break;
   }
 }

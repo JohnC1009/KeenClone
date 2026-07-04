@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Commander Comet: Escape from Grexon-7</title>
 <link rel="stylesheet" href="css/style.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
@@ -12,6 +14,18 @@
   <canvas id="game" width="960" height="544"></canvas>
   <div id="foot">
     ←/→ run &nbsp;·&nbsp; Z/SPACE jump &nbsp;·&nbsp; X zap &nbsp;·&nbsp; C pogo &nbsp;·&nbsp; ENTER start/pause
+  </div>
+</div>
+<div id="touch">
+  <div class="t-group">
+    <button class="t-btn t-big" id="t-left">&#9664;</button>
+    <button class="t-btn t-big" id="t-right">&#9654;</button>
+  </div>
+  <button class="t-btn t-small" id="t-pause">&#10074;&#10074;</button>
+  <div class="t-group">
+    <button class="t-btn t-small" id="t-pogo">POGO</button>
+    <button class="t-btn t-small" id="t-zap">ZAP</button>
+    <button class="t-btn t-big" id="t-jump">JUMP</button>
   </div>
 </div>
 <script src="js/audio.js"></script>

@@ -1,0 +1,35 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #06040f;
+  height: 100%;
+  overflow: hidden;
+  font-family: "Courier New", monospace;
+}
+
+#wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 10px;
+}
+
+#game {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: #000;
+  border: 3px solid #2a1d4f;
+  border-radius: 4px;
+  box-shadow: 0 0 40px rgba(120, 80, 255, 0.25);
+  max-width: 96vw;
+  max-height: 86vh;
+}
+
+#foot {
+  color: #6a5aa8;
+  font-size: 13px;
+  letter-spacing: 1px;
+  user-select: none;
+}

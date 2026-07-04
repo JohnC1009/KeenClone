@@ -15,7 +15,7 @@ every background is drawn procedurally.
 
 > **The year is 2087.**
 >
-> Eight-year-old genius **Zoe "Comet" Carter** was halfway through her math
+> Eight-year-old genius **Madison "Comet" Carter** was halfway through her math
 > homework when every candy store on Earth was beamed into space in a single
 > flash of lime-green light.
 >
@@ -28,7 +28,7 @@ every background is drawn procedurally.
 > The world's governments held emergency meetings. The world's militaries
 > scrambled jets. None of it mattered.
 >
-> But in a backyard in Ohio, Zoe finished her homework early, then built the
+> But in a backyard in Ohio, Madison finished her homework early, then built the
 > **STAR SKIPPER** — a one-kid starship assembled from a vacuum cleaner, her
 > go-kart, and her mom's blender (she left a note). Armed with her homemade
 > **Neural Zapper** and her trusty **Pogo Stick**, she blasted off, punched a
@@ -43,7 +43,7 @@ every background is drawn procedurally.
 
 | Who | What |
 | --- | --- |
-| **Zoe "Comet" Carter** | 8-year-old genius, hero, owner of one (1) pogo stick |
+| **Madison "Comet" Carter** | 8-year-old genius, hero, owner of one (1) pogo stick |
 | **Gloops** | Green one-eyed goo grunts. Slow, squishy, everywhere |
 | **Boingers** | Coiled crimson spring-beasts that never stop bouncing |
 | **Krawlers** | Purple fanged crawlers that charge when they smell candy |
@@ -51,9 +51,15 @@ every background is drawn procedurally.
 
 ### The Worlds
 
+The fight across Grexon-7 spans **six zones**, each meaner than the last —
+enemies get faster, jumps get thinner, and the goo gets angrier:
+
 1. **Crash Canyon** — sun-baked alien mesas under a violet sky and two moons
 2. **The Goo Caverns** — dripping underground tunnels lit by glowing slime
-3. **Reactor Core** — the humming steel heart of the Gloopian war machine
+3. **Reactor Annex** — the humming steel outskirts of the war machine
+4. **The Slime Sewers** — purple sludge pipes deep beneath the surface
+5. **The Junk Fleet** — wrecked starships floating over a bottomless sky
+6. **The Goo Throne** — the reactor's green beating heart. Shut it down
 
 ---
 
@@ -89,7 +95,7 @@ play from anywhere. Add it to your Home Screen for a full-screen app feel.
 
 - **Candy** = 100 pts, **Soda** = 250 pts. Score big for extra lives.
 - The **Neural Zapper** *stuns* Gloopians — it never destroys them.
-  (Zoe is eight. She's not a monster.)
+  (Madison is eight. She's not a monster.)
 - **Stomping** an enemy — especially with the pogo — also stuns it.
 - **Keycards** open the matching colored security doors.
 - **Green goo spikes** hurt. Falling off the planet hurts more.
@@ -103,7 +109,8 @@ play from anywhere. Add it to your Home Screen for a full-screen app feel.
 
 - `js/sprites.js` — all pixel art, defined as ASCII pixel-maps and rendered
   to offscreen canvases at load (including mirrored frames)
-- `js/levels.js` — three handcrafted ASCII tile maps + per-world themes
+- `js/levels.js` — six handcrafted ASCII tile maps + per-world themes
+  and difficulty ratings (later zones spawn faster, meaner aliens)
 - `js/audio.js` — a tiny WebAudio synth: jump blips, zapper pews, goo squishes
 - `js/game.js` — fixed-timestep engine: AABB tile collision, one-way
   platforms, camera, particles, HUD, and the full state machine

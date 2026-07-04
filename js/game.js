@@ -122,8 +122,8 @@ let bg = null;          // background decoration data
 
 const STORY_PAGES = [
   ['THE YEAR IS 2087.', '',
-   "Eight-year-old genius ZOE 'COMET' CARTER was",
-   'halfway through her math homework when every',
+   "Eight-year-old genius MADISON 'COMET' CARTER",
+   'was halfway through her math homework when every',
    'candy store on Earth vanished into space in a',
    'flash of lime-green light.'],
   ["The GLOOPIAN EMPIRE has stolen Earth's sugar",
@@ -131,7 +131,7 @@ const STORY_PAGES = [
    'that will turn every planet in the sector',
    'into lukewarm, lime-flavored goo.', '',
    'EARTH IS NEXT ON THE MENU.'],
-  ['So Zoe built the STAR SKIPPER from a vacuum',
+  ['So Madison built the STAR SKIPPER from a vacuum',
    "cleaner, her go-kart, and her mom's blender.", '',
    'Armed with her NEURAL ZAPPER and trusty POGO',
    'STICK, she crash-lands on PLANET GREXON-7...', '',
@@ -169,10 +169,12 @@ function loadLevel(idx) {
         ch = '.';
       } else if (ENEMY_DEFS[ch]) {
         const d = ENEMY_DEFS[ch];
+        const diff = def.diff || 1;          // later zones = faster aliens
+        const sp = d.speed * diff;
         enemies.push({
           kind: d.kind, w: d.w, h: d.h,
           x: c * T + (T - d.w) / 2, y: (r + 1) * T - d.h,
-          vx: -d.speed, vy: 0, dir: -1, speed: d.speed,
+          vx: -sp, vy: 0, dir: -1, speed: sp, diff,
           stunned: false, stunTime: 0, onGround: false, anim: Math.random() * 100,
         });
         ch = '.';
@@ -493,7 +495,7 @@ function updateEnemies() {
       const res = moveEntity(e);
       if (res.hitX) { e.dir *= -1; }
       if (res.onGround) {
-        e.vy = -8.5;
+        e.vy = -8.5 - (e.diff - 1) * 2;   // harder zones bounce higher
         e.vx = e.dir * e.speed;
       }
     } else {
@@ -503,7 +505,7 @@ function updateEnemies() {
         const sameRow = Math.abs((e.y + e.h) - (player.y + player.h)) < T * 1.5;
         const seesYou = sameRow && Math.abs(player.x - e.x) < T * 6 &&
                         Math.sign(player.x - e.x) === e.dir;
-        if (seesYou) sp = 2.6;
+        if (seesYou) sp = 2.6 + (e.diff - 1) * 1.2;
       }
       e.vx = e.dir * sp;
       e.vy = Math.min(e.vy + GRAV, MAX_FALL);
@@ -650,9 +652,10 @@ function drawBackground(theme) {
   } else if (theme.type === 'reactor') {
     // Pulsing core glow
     const pulse = 0.25 + 0.15 * Math.sin(G.time * 0.05);
+    const glow = theme.glow || '255,60,40';
     const rg = ctx.createRadialGradient(VIEW_W / 2, VIEW_H, 50, VIEW_W / 2, VIEW_H, VIEW_H);
-    rg.addColorStop(0, `rgba(255,60,40,${pulse})`);
-    rg.addColorStop(1, 'rgba(255,60,40,0)');
+    rg.addColorStop(0, `rgba(${glow},${pulse})`);
+    rg.addColorStop(1, `rgba(${glow},0)`);
     ctx.fillStyle = rg;
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   } else if (theme.type === 'cave') {
@@ -775,7 +778,7 @@ function drawPlayer() {
   const p = player;
   if (p.invuln > 0 && Math.floor(G.time / 4) % 2 === 0) return;  // blink
 
-  const set = p.facing > 0 ? Sprites.zoe : Sprites.zoeL;
+  const set = p.facing > 0 ? Sprites.madison : Sprites.madisonL;
   let img;
   if (p.pogo) img = set.pogo;
   else if (!p.onGround) img = set.jump;
@@ -865,9 +868,9 @@ function drawHud() {
   if (level.keys.red)   { ctx.drawImage(Sprites.items.keyRed, kx, 12); kx += 34; }
   if (level.keys.green) { ctx.drawImage(Sprites.items.keyGreen, kx, 12); }
 
-  // Lives (little Zoe heads) + level name
+  // Lives + level name
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(`ZOE x${G.lives}`, 480, 22);
+  ctx.fillText(`MADISON x${G.lives}`, 480, 22);
   ctx.fillStyle = '#a0a0ff';
   ctx.textAlign = 'right';
   ctx.fillText(`${level.def.name}`, VIEW_W - 12, 22);
@@ -875,7 +878,7 @@ function drawHud() {
 
   if (player.pogo) {
     ctx.fillStyle = '#c9ced9';
-    ctx.fillText('POGO', 590, 22);
+    ctx.fillText('POGO', 650, 22);
   }
 }
 
@@ -933,9 +936,9 @@ function drawTitle() {
   bigText('COMMANDER COMET', 170, 52);
   bigText('ESCAPE FROM GREXON-7', 215, 22, '#a0a0ff');
 
-  // Big bouncing Zoe on her pogo
+  // Big bouncing Madison on her pogo
   const bounce = Math.abs(Math.sin(G.time * 0.06)) * 40;
-  const img = Sprites.zoe.pogo;
+  const img = Sprites.madison.pogo;
   ctx.save();
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(img, 150, 300 - bounce, img.width * 3, img.height * 3);
@@ -959,7 +962,7 @@ function drawTitle() {
   ctx.textAlign = 'left';
 
   blinkText(IS_TOUCH ? 'TAP TO START' : 'PRESS ENTER TO START', 470, 22, '#aaffcc');
-  bigText("(c) 2087 CARTER AEROSPACE (ZOE'S GARAGE)", 522, 12, '#6a5aa8');
+  bigText("(c) 2087 CARTER AEROSPACE (MADISON'S GARAGE)", 522, 12, '#6a5aa8');
 }
 
 function drawStory() {
@@ -1132,7 +1135,7 @@ function render() {
         "Earth's candy rains gently home by tractor beam.",
         'The Gloopian Empire files for bankruptcy.',
         '',
-        'Zoe walks in the front door at 8:59 PM.',
+        'Madison walks in the front door at 8:59 PM.',
         'Nobody ever knew.',
       ];
       lines.forEach((l, i) => ctx.fillText(l, VIEW_W / 2, 190 + i * 30));

@@ -50,9 +50,9 @@ function lcg(seed) {
   };
 }
 
-// ------------------------------- ZOE ---------------------------------------
+// ----------------------------- MADISON ---------------------------------------
 
-const ZOE_PAL = {
+const MADISON_PAL = {
   h: '#3fd12f', H: '#1f8f16',            // helmet
   f: '#ffd0a0', F: '#e0a878',            // skin
   k: '#141420', w: '#ffffff',            // eyes / lines
@@ -63,7 +63,7 @@ const ZOE_PAL = {
   s: '#c9ced9', g: '#5a6070',            // pogo stick
 };
 
-const ZOE_HEAD = [
+const MADISON_HEAD = [
   '....hhhhhhhh....',
   '...hhhhhhhhhh...',
   '..hhhhhhhhhhhh..',
@@ -74,7 +74,7 @@ const ZOE_HEAD = [
   '....ffffffff....',
 ];
 
-const ZOE_TORSO = [
+const MADISON_TORSO = [
   '...pppppppppp...',
   '..fpppyypppppf..',
   '..fppppyyppppf..',
@@ -82,7 +82,7 @@ const ZOE_TORSO = [
   '....PPPPPPPP....',
 ];
 
-const ZOE_IDLE = ZOE_HEAD.concat(ZOE_TORSO, [
+const MADISON_IDLE = MADISON_HEAD.concat(MADISON_TORSO, [
   '....bbbbbbbb....',
   '....bbbBBbbb....',
   '....bb....bb....',
@@ -92,7 +92,7 @@ const ZOE_IDLE = ZOE_HEAD.concat(ZOE_TORSO, [
   '................',
 ]);
 
-const ZOE_RUN1 = ZOE_HEAD.concat(ZOE_TORSO, [
+const MADISON_RUN1 = MADISON_HEAD.concat(MADISON_TORSO, [
   '....bbbbbbbb....',
   '...bbbBBbbbb....',
   '...bb.....bbb...',
@@ -102,7 +102,7 @@ const ZOE_RUN1 = ZOE_HEAD.concat(ZOE_TORSO, [
   '................',
 ]);
 
-const ZOE_RUN2 = ZOE_HEAD.concat(ZOE_TORSO, [
+const MADISON_RUN2 = MADISON_HEAD.concat(MADISON_TORSO, [
   '....bbbbbbbb....',
   '....bbBBbbb.....',
   '.....bbbbb......',
@@ -112,7 +112,7 @@ const ZOE_RUN2 = ZOE_HEAD.concat(ZOE_TORSO, [
   '................',
 ]);
 
-const ZOE_JUMP = ZOE_HEAD.concat(ZOE_TORSO, [
+const MADISON_JUMP = MADISON_HEAD.concat(MADISON_TORSO, [
   '....bbbbbbbb....',
   '...bbbBBbbbb....',
   '...bbb...bbb....',
@@ -122,7 +122,7 @@ const ZOE_JUMP = ZOE_HEAD.concat(ZOE_TORSO, [
   '................',
 ]);
 
-const ZOE_POGO = ZOE_HEAD.concat(ZOE_TORSO, [
+const MADISON_POGO = MADISON_HEAD.concat(MADISON_TORSO, [
   '....bbbbbbbb....',
   '....bbbBBbbb....',
   '...bbb.ss.bbb...',
@@ -464,12 +464,12 @@ function buildTiles(theme) {
 // ------------------------------ EXPORT -------------------------------------
 
 const Sprites = {
-  zoe: {
-    idle:  makeSprite(ZOE_IDLE, ZOE_PAL),
-    run1:  makeSprite(ZOE_RUN1, ZOE_PAL),
-    run2:  makeSprite(ZOE_RUN2, ZOE_PAL),
-    jump:  makeSprite(ZOE_JUMP, ZOE_PAL),
-    pogo:  makeSprite(ZOE_POGO, ZOE_PAL),
+  madison: {
+    idle:  makeSprite(MADISON_IDLE, MADISON_PAL),
+    run1:  makeSprite(MADISON_RUN1, MADISON_PAL),
+    run2:  makeSprite(MADISON_RUN2, MADISON_PAL),
+    jump:  makeSprite(MADISON_JUMP, MADISON_PAL),
+    pogo:  makeSprite(MADISON_POGO, MADISON_PAL),
   },
   gloop:   { f1: makeSprite(GLOOP_1, GLOOP_PAL),   f2: makeSprite(GLOOP_2, GLOOP_PAL),   stun: makeSprite(GLOOP_STUN, GLOOP_PAL) },
   boinger: { f1: makeSprite(BOINGER_1, BOINGER_PAL), f2: makeSprite(BOINGER_2, BOINGER_PAL), stun: makeSprite(BOINGER_STUN, BOINGER_PAL) },
@@ -487,8 +487,8 @@ const Sprites = {
 };
 
 // Pre-build mirrored (left-facing) frames.
-Sprites.zoeL = {};
-for (const k of Object.keys(Sprites.zoe)) Sprites.zoeL[k] = flipH(Sprites.zoe[k]);
+Sprites.madisonL = {};
+for (const k of Object.keys(Sprites.madison)) Sprites.madisonL[k] = flipH(Sprites.madison[k]);
 for (const name of ['gloop', 'boinger', 'krawler']) {
   Sprites[name].f1L = flipH(Sprites[name].f1);
   Sprites[name].f2L = flipH(Sprites[name].f2);

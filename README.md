@@ -52,7 +52,10 @@ every background is drawn procedurally.
 ### The Worlds
 
 The fight across Grexon-7 spans **six zones**, each meaner than the last —
-enemies get faster, jumps get thinner, and the goo gets angrier:
+enemies get faster, jumps get thinner, and the goo gets angrier. Every zone
+is a Keen-sized map: two screens tall and nine-plus screens wide, with
+vertical exploration — upper galleries, climb shafts, mesa tiers — and
+key hunts that send you across both storeys:
 
 1. **Crash Canyon** — sun-baked alien mesas under a violet sky and two moons
 2. **The Goo Caverns** — dripping underground tunnels lit by glowing slime
@@ -109,8 +112,9 @@ play from anywhere. Add it to your Home Screen for a full-screen app feel.
 
 - `js/sprites.js` — all pixel art, defined as ASCII pixel-maps and rendered
   to offscreen canvases at load (including mirrored frames)
-- `js/levels.js` — six handcrafted ASCII tile maps + per-world themes
-  and difficulty ratings (later zones spawn faster, meaner aliens)
+- `js/levels.js` — six handcrafted worlds painted with a tiny grid-builder
+  (ground/ledge/shaft/door/key motifs), plus per-world themes and
+  difficulty ratings (later zones spawn faster, meaner aliens)
 - `js/audio.js` — a tiny WebAudio synth: jump blips, zapper pews, goo squishes
 - `js/game.js` — fixed-timestep engine: AABB tile collision, one-way
   platforms, camera, particles, HUD, illustrated cutscenes (a five-page

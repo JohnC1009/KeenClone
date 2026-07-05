@@ -108,6 +108,7 @@ const G = {
   time: 0,              // global frame counter (for animation)
   stateTime: 0,         // frames in current state
   camX: 0,
+  camY: 0,
 };
 
 let level = null;       // parsed level
@@ -559,6 +560,7 @@ function loadLevel(idx) {
   tiles = Sprites.buildTiles(def.theme);
   bg = makeBackground(def.theme);
   G.camX = Math.max(0, Math.min(player.x - VIEW_W / 2, level.pxW - VIEW_W));
+  G.camY = Math.max(0, Math.min(player.y - VIEW_H * 0.6, level.pxH - VIEW_H));
 }
 
 // ------------------------------ TILE HELPERS --------------------------------
@@ -949,6 +951,9 @@ function updateCamera() {
   const target = player.x + player.w / 2 - VIEW_W / 2 + player.facing * 60;
   G.camX += (target - G.camX) * 0.08;
   G.camX = Math.max(0, Math.min(G.camX, level.pxW - VIEW_W));
+  const targetY = player.y + player.h / 2 - VIEW_H * 0.55;
+  G.camY += (targetY - G.camY) * 0.1;
+  G.camY = Math.max(0, Math.min(G.camY, level.pxH - VIEW_H));
 }
 
 // ------------------------------ BACKGROUNDS ---------------------------------
@@ -971,6 +976,11 @@ function makeBackground(theme) {
 }
 
 function drawBackground(theme) {
+  // Vertical parallax anchors: ground-hugging layers sit at `horizon`,
+  // ceiling-hugging layers hang from `topOff`.
+  const spanY = Math.max(1, level.pxH - VIEW_H);
+  const horizon = VIEW_H + (spanY - G.camY) * 0.35;
+  const topOff = -G.camY * 0.35;
   // Sky
   const grad = ctx.createLinearGradient(0, 0, 0, VIEW_H);
   grad.addColorStop(0, theme.skyTop);
@@ -1003,7 +1013,7 @@ function drawBackground(theme) {
     // Pulsing core glow
     const pulse = 0.25 + 0.15 * Math.sin(G.time * 0.05);
     const glow = theme.glow || '255,60,40';
-    const rg = ctx.createRadialGradient(VIEW_W / 2, VIEW_H, 50, VIEW_W / 2, VIEW_H, VIEW_H);
+    const rg = ctx.createRadialGradient(VIEW_W / 2, horizon, 50, VIEW_W / 2, horizon, VIEW_H);
     rg.addColorStop(0, `rgba(${glow},${pulse})`);
     rg.addColorStop(1, `rgba(${glow},0)`);
     ctx.fillStyle = rg;
@@ -1012,11 +1022,11 @@ function drawBackground(theme) {
     // Goo glow pools
     for (let i = 0; i < 5; i++) {
       const gx = ((i * 420 + 200) - G.camX * 0.35) % (VIEW_W + 500) - 200;
-      const rg = ctx.createRadialGradient(gx, VIEW_H - 30, 8, gx, VIEW_H - 30, 130);
+      const rg = ctx.createRadialGradient(gx, horizon - 30, 8, gx, horizon - 30, 130);
       rg.addColorStop(0, 'rgba(80,255,80,0.16)');
       rg.addColorStop(1, 'rgba(80,255,80,0)');
       ctx.fillStyle = rg;
-      ctx.fillRect(gx - 140, VIEW_H - 170, 280, 170);
+      ctx.fillRect(gx - 140, horizon - 170, 280, 170);
     }
   }
 
@@ -1028,12 +1038,12 @@ function drawBackground(theme) {
     if (sx > VIEW_W + 100 || sx < -200) continue;
     if (theme.type === 'cave') {
       ctx.beginPath();
-      ctx.moveTo(sx, 0); ctx.lineTo(sx + m.w, 0);
-      ctx.lineTo(sx + m.w / 2, m.h * 0.9);
+      ctx.moveTo(sx, topOff); ctx.lineTo(sx + m.w, topOff);
+      ctx.lineTo(sx + m.w / 2, topOff + m.h * 0.9);
       ctx.closePath(); ctx.fill();
     } else {
-      ctx.fillRect(sx, VIEW_H - m.h, m.w, m.h);
-      ctx.fillRect(sx + m.w * 0.2, VIEW_H - m.h - 18, m.w * 0.6, 18);
+      ctx.fillRect(sx, horizon - m.h, m.w, m.h);
+      ctx.fillRect(sx + m.w * 0.2, horizon - m.h - 18, m.w * 0.6, 18);
     }
   }
   // Near silhouettes
@@ -1044,17 +1054,17 @@ function drawBackground(theme) {
     if (sx > VIEW_W + 100 || sx < -200) continue;
     if (theme.type === 'cave') {
       ctx.beginPath();
-      ctx.moveTo(sx, 0); ctx.lineTo(sx + m.w, 0);
-      ctx.lineTo(sx + m.w / 2, m.h * 0.7);
+      ctx.moveTo(sx, topOff); ctx.lineTo(sx + m.w, topOff);
+      ctx.lineTo(sx + m.w / 2, topOff + m.h * 0.7);
       ctx.closePath(); ctx.fill();
     } else if (theme.type === 'reactor') {
-      ctx.fillRect(sx, VIEW_H - m.h, m.w * 0.5, m.h);
+      ctx.fillRect(sx, horizon - m.h, m.w * 0.5, m.h);
       const on = Math.floor(G.time / 30 + m.x) % 2 === 0;
       ctx.fillStyle = on ? '#ff5a3a' : '#601810';
-      ctx.fillRect(sx + m.w * 0.15, VIEW_H - m.h + 10, 6, 6);
+      ctx.fillRect(sx + m.w * 0.15, horizon - m.h + 10, 6, 6);
       ctx.fillStyle = theme.near;
     } else {
-      ctx.fillRect(sx, VIEW_H - m.h, m.w, m.h);
+      ctx.fillRect(sx, horizon - m.h, m.w, m.h);
     }
   }
 }
@@ -1062,14 +1072,17 @@ function drawBackground(theme) {
 // ------------------------------- DRAWING ------------------------------------
 
 function drawTiles() {
+  const oy = Math.floor(G.camY);
   const c0 = Math.max(0, Math.floor(G.camX / T));
   const c1 = Math.min(level.w - 1, Math.floor((G.camX + VIEW_W) / T));
-  for (let r = 0; r < level.h; r++) {
+  const r0 = Math.max(0, Math.floor(oy / T));
+  const r1 = Math.min(level.h - 1, Math.floor((oy + VIEW_H) / T));
+  for (let r = r0; r <= r1; r++) {
     for (let c = c0; c <= c1; c++) {
       const ch = level.grid[r][c];
       if (ch === '.') continue;
       const x = Math.floor(c * T - G.camX);
-      const y = r * T;
+      const y = r * T - oy;
       if (tiles[ch]) {
         ctx.drawImage(tiles[ch], x, y);
         // surface cap where solid ground meets open air
@@ -1105,7 +1118,7 @@ function drawTiles() {
   if (level.exitRect) {
     const er = level.exitRect;
     const x = Math.floor(er.c0 * T - G.camX);
-    const y = er.r0 * T;
+    const y = er.r0 * T - Math.floor(G.camY);
     const w = (er.c1 - er.c0 + 1) * T;
     const h = (er.r1 - er.r0 + 1) * T;
     if (x > -w - 60 && x < VIEW_W + 60) {
@@ -1158,7 +1171,7 @@ function drawPlayer() {
   else img = set.idle;
 
   const dx = Math.floor(p.x - G.camX - (img.width - p.w) / 2);
-  const dy = Math.floor(p.y + p.h - img.height);
+  const dy = Math.floor(p.y + p.h - img.height - G.camY);
   ctx.drawImage(img, dx, dy);
 }
 
@@ -1172,8 +1185,8 @@ function drawEnemies() {
       img = e.dir > 0 ? (f ? set.f1L : set.f2L) : (f ? set.f1 : set.f2);
     }
     const dx = Math.floor(e.x - G.camX - (img.width - e.w) / 2);
-    const dy = Math.floor(e.y + e.h - img.height);
-    if (dx < -60 || dx > VIEW_W + 60) continue;
+    const dy = Math.floor(e.y + e.h - img.height - G.camY);
+    if (dx < -60 || dx > VIEW_W + 60 || dy < -80 || dy > VIEW_H + 80) continue;
     ctx.drawImage(img, dx, dy);
 
     // Dizzy stars over freshly stunned enemies
@@ -1182,7 +1195,7 @@ function drawEnemies() {
       for (let i = 0; i < 3; i++) {
         const ang = a + i * (Math.PI * 2 / 3);
         const sx = e.x + e.w / 2 + Math.cos(ang) * 12 - G.camX;
-        const sy = e.y - 8 + Math.sin(ang) * 4;
+        const sy = e.y - 8 + Math.sin(ang) * 4 - G.camY;
         ctx.fillStyle = '#ffd94a';
         ctx.fillRect(Math.floor(sx), Math.floor(sy), 3, 3);
       }
@@ -1192,7 +1205,7 @@ function drawEnemies() {
 
 function drawShots() {
   for (const s of shots) {
-    ctx.drawImage(Sprites.shot, Math.floor(s.x - G.camX), Math.floor(s.y));
+    ctx.drawImage(Sprites.shot, Math.floor(s.x - G.camX), Math.floor(s.y - G.camY));
   }
 }
 
@@ -1200,16 +1213,16 @@ function drawFx() {
   for (const p of particles) {
     ctx.globalAlpha = Math.min(1, p.life / 15);
     ctx.fillStyle = p.color;
-    ctx.fillRect(Math.floor(p.x - G.camX), Math.floor(p.y), p.size, p.size);
+    ctx.fillRect(Math.floor(p.x - G.camX), Math.floor(p.y - G.camY), p.size, p.size);
   }
   ctx.globalAlpha = 1;
   ctx.font = 'bold 13px "Courier New"';
   for (const t of toasts) {
     ctx.globalAlpha = Math.min(1, t.life / 20);
     ctx.fillStyle = '#000000';
-    ctx.fillText(t.text, Math.floor(t.x - G.camX) + 1, Math.floor(t.y) + 1);
+    ctx.fillText(t.text, Math.floor(t.x - G.camX) + 1, Math.floor(t.y - G.camY) + 1);
     ctx.fillStyle = t.color;
-    ctx.fillText(t.text, Math.floor(t.x - G.camX), Math.floor(t.y));
+    ctx.fillText(t.text, Math.floor(t.x - G.camX), Math.floor(t.y - G.camY));
   }
   ctx.globalAlpha = 1;
 }
